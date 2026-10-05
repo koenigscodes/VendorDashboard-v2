@@ -5,3 +5,8 @@ const getHealth = (_req: Request, res: Response) => {
 };
 
 export default getHealth;
+
+
+
+//Note
+//controllers should focus on handling HTTP req/res

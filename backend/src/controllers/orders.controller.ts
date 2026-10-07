@@ -19,7 +19,7 @@ const getOrderById = (req: Request, res: Response) => {
    }
    
     res.json(order);
-}
+};
 
 const createOrder = (req: Request, res: Response) => {
     const result = createOrderSchema.safeParse(req.body);
@@ -28,7 +28,7 @@ const createOrder = (req: Request, res: Response) => {
         return res.status(400).json({message: "Invalid order"})
     }
 
-     const highestId = orders.reduce((highestId, order) => {
+    const highestId = orders.reduce((highestId, order) => {
         return order.id > highestId ? order.id : highestId; 
     }, 0);
 
@@ -42,7 +42,7 @@ const createOrder = (req: Request, res: Response) => {
     orders.push(newOrder);
 
     return res.status(201).json(newOrder);
-}
+};
 
 const updateOrder = (req: Request, res: Response) => {
     const orderId = Number(req.params.id);
@@ -73,6 +73,24 @@ const updateOrder = (req: Request, res: Response) => {
     orders[orderIndex] = updatedOrder;
 
     return res.json(updateOrder);
-}
+};
 
-export { getOrders, getOrderById, createOrder, updateOrder };
+const deleteOrder = (req: Request, res: Response) => {
+    const orderId = Number(req.params.id);
+
+    const order = orders.find(order => order.id === orderId);
+
+    if (!order) {
+        return res.status(404).json({
+            message: "order not found"
+        });
+    }    
+
+    const orderIndex = orders.findIndex(order => order.id === orderId);
+
+    orders.splice(orderIndex, 1);
+
+    return res.status(204).send();
+};
+
+export { getOrders, getOrderById, createOrder, updateOrder, deleteOrder };

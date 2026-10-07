@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const createOrderSchema = z.object({
+export const createOrderSchema = z.object({
     customer: z.string().min(3),
     status: z.enum([
         "pending",
@@ -11,9 +11,13 @@ const createOrderSchema = z.object({
     total: z.number().positive(),
 });
 
-export default createOrderSchema;
+export const updateOrderSchema = createOrderSchema
+    .partial()
+    .refine((data) => Object.keys(data).length > 0);
+//
 
 
 
-//schemas/ answers:
+
+//schemas answers:
 //What data are we willing to accept at runtime?

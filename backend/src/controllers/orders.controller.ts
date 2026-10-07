@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import orders from "../data/orders.js"
 
-import createOrderSchema from "../schemas/order.schema.js";
+import { createOrderSchema, updateOrderSchema } from "../schemas/order.schema.js";
 
 const getOrders = (_req: Request, res: Response) => {
     res.json(orders);
@@ -44,4 +44,35 @@ const createOrder = (req: Request, res: Response) => {
     return res.status(201).json(newOrder);
 }
 
-export { getOrders, getOrderById, createOrder };
+const updateOrder = (req: Request, res: Response) => {
+    const orderId = Number(req.params.id);
+
+    const order = orders.find(order => order.id === orderId);
+
+    if(!order) {
+        return res.status(404).json({
+            message: "order not found"
+        });
+    }
+
+    const result = updateOrderSchema.safeParse(req.body);
+
+    if (!result.success) {
+        return res.status(400).json({message: "Invalid order"})
+    }
+
+    const orderIndex = orders.findIndex(order => order.id === orderId);
+
+    const updatedOrder = {
+        ...order,
+        customer: result.data.customer ?? order.customer,
+        status: result.data.status ?? order.status,
+        total: result.data.total ?? order.total,
+    };
+
+    orders[orderIndex] = updatedOrder;
+
+    return res.json(updateOrder);
+}
+
+export { getOrders, getOrderById, createOrder, updateOrder };

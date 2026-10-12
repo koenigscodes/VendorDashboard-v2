@@ -16,7 +16,12 @@ export const updateOrderSchema = createOrderSchema
     .refine((data) => Object.keys(data).length > 0);
 //
 
-
+export const orderStatusSchema = z.enum([
+    "pending",
+    "processing",
+    "delivered",
+    "cancelled",
+]);
 
 
 //schemas answers:

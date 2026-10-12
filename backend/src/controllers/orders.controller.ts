@@ -1,10 +1,74 @@
 import type { Request, Response } from "express";
 import orders from "../data/orders.js"
 
-import { createOrderSchema, updateOrderSchema } from "../schemas/order.schema.js";
+import { createOrderSchema, orderStatusSchema, updateOrderSchema } from "../schemas/order.schema.js";
 
-const getOrders = (_req: Request, res: Response) => {
-    res.json(orders);
+const getOrders = (req: Request, res: Response) => {
+    const search = req.query.search;
+    const status = req.query.status;
+
+    const page = Number(req.query.page ?? 1);
+    const limit = Number(req.query.limit ?? 6);
+
+    if (
+        !Number.isInteger(page) ||
+        !Number.isInteger(limit) ||
+        page < 1 ||
+        limit < 1 ||
+        limit > 100
+    ) {
+        return res.status(400).json({
+            message: "Invalid pagination parameters",
+        });
+    }
+
+    if (status !== undefined) {
+        const result = orderStatusSchema.safeParse(status);
+
+        if (!result.success) {
+            return res.status(400).json({
+                message: "Invalid order status",
+            })
+        }
+    }
+
+    const searchTerm = typeof search === "string"
+        ? search.trim().toLowerCase()
+        : "";
+
+    const filteredOrders = orders.filter(order =>
+         order.customer.toLowerCase().includes(searchTerm)
+    );
+
+    const statusTerm = typeof status === "string"
+        ? status.trim().toLowerCase()
+        : "";
+
+    const matchesStatus = statusTerm === ""
+        ? filteredOrders
+        : filteredOrders.filter(order =>
+            order.status === statusTerm
+        );
+
+    const totalOrders = matchesStatus.length;
+    const totalPages = Math.ceil(totalOrders / limit);
+
+    const startIndex = (page - 1) * limit;
+
+    const paginatedOrders = matchesStatus.slice(
+        startIndex,
+        startIndex + limit
+    );
+
+    res.json({
+        orders: paginatedOrders,
+        pagination: {
+            page,
+            limit,
+            totalOrders,
+            totalPages,
+        },
+    });
 };
 
 const getOrderById = (req: Request, res: Response) => {
@@ -17,7 +81,7 @@ const getOrderById = (req: Request, res: Response) => {
         message: "order not found"
     });
    }
-   
+
     res.json(order);
 };
 
@@ -29,7 +93,7 @@ const createOrder = (req: Request, res: Response) => {
     }
 
     const highestId = orders.reduce((highestId, order) => {
-        return order.id > highestId ? order.id : highestId; 
+        return order.id > highestId ? order.id : highestId;
     }, 0);
 
     const newOrder = {
@@ -84,7 +148,7 @@ const deleteOrder = (req: Request, res: Response) => {
         return res.status(404).json({
             message: "order not found"
         });
-    }    
+    }
 
     const orderIndex = orders.findIndex(order => order.id === orderId);
 

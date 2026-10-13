@@ -2,6 +2,8 @@ import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { useGetOrderByIdQuery, useUpdateOrderMutation} from "../app/api/OrdersApi";
 
+import type { OrderStatus } from "../types/Order";
+
 function OrderDetails () {
     const { id } = useParams();
 
@@ -17,13 +19,13 @@ function OrderDetails () {
         updateOrder, {isLoading: isUpdating}
     ] = useUpdateOrderMutation();
 
-    const handleMarkDelivered = async (id: number) => {
+    const handleStatusChange = async (id: number, status: OrderStatus) => {
         setUpdateError("");
 
         try {
             await updateOrder({
                 id,
-                status: "delivered"
+                status
             }).unwrap();
         } catch {
             setUpdateError(
@@ -60,12 +62,45 @@ function OrderDetails () {
                     {updateError}
                 </p>
             )}
-            <button
-                onClick={() => handleMarkDelivered(order.id)}
-                disabled={isUpdating || order.status === "delivered"}
-            >
-                {isUpdating ? "updating" : "Mark as delivered"}
-            </button>
+            <div>
+                <p>Change order status:</p>
+                <div className="flex flew wrap gap-2">
+                    <button
+                        className="rounded-md px-3 py-2 text-sm font-medium 
+                        transition-colors bg-blue-100 text-blue-800 hover:bg-blue-200
+                        disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() =>
+                            handleStatusChange(order.id, "processing")
+                        }
+                        disabled={isUpdating || order.status === "processing"}
+                    >
+                        Processing
+                    </button>
+                    <button
+                        className="rounded-md px-3 py-2 text-sm font-medium 
+                        transition-colors bg-green-100 text-green-800 hover:bg-green-200
+                        disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() =>
+                            handleStatusChange(order.id, "delivered")
+                        }
+                        disabled={isUpdating || order.status === "delivered"}
+                    >
+                        Delivered
+                    </button>
+                    <button
+                        className="rounded-md px-3 py-2 text-sm font-medium 
+                        transition-colors bg-red-100 text-red-800 hover:bg-red-200
+                        disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() =>
+                            handleStatusChange(order.id, "cancelled")
+                        }
+                        disabled={isUpdating || order.status === "cancelled"}
+                    >
+                        Cancelled
+                    </button>
+                </div>
+                {isUpdating && <p>Updating status...</p>}
+            </div>
         </div>
     )
 }

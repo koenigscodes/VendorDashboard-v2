@@ -1,5 +1,6 @@
-import { useGetOrdersQuery } from "../app/api/OrdersApi";
+import { useGetOrdersQuery, } from "../app/api/OrdersApi";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import type { OrderStatus } from "../types/Order";
 
@@ -61,16 +62,22 @@ function Orders() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
             />
+
             {data && data.orders.length === 0 ? (
                 <p>No orders match your search</p>
             ) : (
-                data?.orders.map(order => (
-                    <div key={order.id}>
-                        <h2>{order.customer}</h2>
-                        <p>{order.status}</p>
-                        <p>{order.total}</p>
-                    </div>
-                ))
+                data?.orders.map(order => {
+                    return (
+                        <div key={order.id}>
+                            <h2>{order.customer}</h2>
+                            <p>{order.status}</p>
+                            <p>{order.total}</p>
+                            <Link to={`/dashboard/orders/${order.id}`}>
+                                 View order
+                            </Link>
+                        </div>
+                    )
+                })
             )}
             {data && data.pagination.totalPages > 0 && (
                 <div>

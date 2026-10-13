@@ -136,7 +136,7 @@ const updateOrder = (req: Request, res: Response) => {
 
     orders[orderIndex] = updatedOrder;
 
-    return res.json(updateOrder);
+    return res.json(updatedOrder);
 };
 
 const deleteOrder = (req: Request, res: Response) => {

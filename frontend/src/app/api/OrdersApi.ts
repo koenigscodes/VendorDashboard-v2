@@ -16,11 +16,27 @@ export const ordersApi = baseApi.injectEndpoints({
                 url: "/orders",
                 params: args
             }),
-            providesTags: ["Orders"]
+            providesTags: (result) => [
+                "Orders",
+                ...(result?.orders.map((order) => ({
+                    type: "Order" as const,
+                    id: order.id,
+                })) ?? []),
+            ],
         }),
         getOrderById: builder.query<Order, number>({
             query: (id) => `/orders/${id}`,
-            providesTags: ["Orders"],
+            providesTags: (_result, _error, id) => [
+                { type: "Order", id }
+            ],
+        }),
+        createOrder: builder.mutation<Order, { customer: string; total:number }>({
+            query: (newOrder) => ({
+                url: "/orders",
+                method: "POST",
+                body: newOrder,
+            }),
+            invalidatesTags: ["Orders"],
         }),
         updateOrder: builder.mutation<Order, {id: number; status: OrderStatus}>({
             query: (arg) => ({
@@ -28,9 +44,25 @@ export const ordersApi = baseApi.injectEndpoints({
                 method: "PATCH",
                 body: {status: arg.status},
             }),
-            invalidatesTags: ["Orders"]
-        })
+            invalidatesTags: (_result, _error, { id }) => [
+                "Orders",
+                { type: "Order", id },
+            ],
+        }),
+        deleteOrder: builder.mutation<void, {id: number}>({
+            query: ({ id }) => ({
+                url: `/orders/${id}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ["Orders"],
+        }),
     })
 })
 
-export const { useGetOrdersQuery, useUpdateOrderMutation, useGetOrderByIdQuery } = ordersApi;
+export const {
+    useGetOrdersQuery,
+    useUpdateOrderMutation,
+    useGetOrderByIdQuery,
+    useCreateOrderMutation,
+    useDeleteOrderMutation,
+} = ordersApi;

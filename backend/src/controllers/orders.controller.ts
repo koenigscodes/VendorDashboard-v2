@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 import orders from "../data/orders.js"
 
+import type { Order } from "../types/order.js";
+
 import { createOrderSchema, orderStatusSchema, updateOrderSchema } from "../schemas/order.schema.js";
 
 const getOrders = (req: Request, res: Response) => {
@@ -96,10 +98,10 @@ const createOrder = (req: Request, res: Response) => {
         return order.id > highestId ? order.id : highestId;
     }, 0);
 
-    const newOrder = {
+    const newOrder: Order = {
         id: highestId + 1,
         customer: result.data.customer,
-        status: result.data.status,
+        status: "pending",
         total: result.data.total
     };
 
@@ -127,7 +129,7 @@ const updateOrder = (req: Request, res: Response) => {
 
     const orderIndex = orders.findIndex(order => order.id === orderId);
 
-    const updatedOrder = {
+    const updatedOrder: Order = {
         ...order,
         customer: result.data.customer ?? order.customer,
         status: result.data.status ?? order.status,

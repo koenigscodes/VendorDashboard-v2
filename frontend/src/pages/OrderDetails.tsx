@@ -1,10 +1,11 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { useGetOrderByIdQuery, useUpdateOrderMutation} from "../app/api/OrdersApi";
+import { useGetOrderByIdQuery, useUpdateOrderMutation, useDeleteOrderMutation} from "../app/api/OrdersApi";
 
 import type { OrderStatus } from "../types/Order";
 
 function OrderDetails () {
+    const navigate = useNavigate();
     const { id } = useParams();
 
     const orderId = Number(id);
@@ -18,6 +19,10 @@ function OrderDetails () {
     const [
         updateOrder, {isLoading: isUpdating}
     ] = useUpdateOrderMutation();
+
+    const [
+        deleteOrder, {isLoading: isDeleting}
+    ] = useDeleteOrderMutation();
 
     const handleStatusChange = async (id: number, status: OrderStatus) => {
         setUpdateError("");
@@ -33,6 +38,17 @@ function OrderDetails () {
             );
         }
     };
+
+    const handleDeleteOrder = async (id: number) => {
+        try {
+            await deleteOrder({
+                id,
+            }).unwrap();
+            navigate("/dashboard/orders");
+        } catch (error) {
+            console.error("Failed to delete order:", error);
+        }
+    }
 
     if (!id || !Number.isInteger(orderId) || orderId < 1) {
         return <p>Invalid Order ID</p>;
@@ -99,6 +115,13 @@ function OrderDetails () {
                         Cancelled
                     </button>
                 </div>
+                <button
+                    onClick={() =>
+                        handleDeleteOrder(order.id)
+                    }
+                >
+                    {isDeleting ? "Deleting..." : "Delete" }
+                </button>
                 {isUpdating && <p>Updating status...</p>}
             </div>
         </div>

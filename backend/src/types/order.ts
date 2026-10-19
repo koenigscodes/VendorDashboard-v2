@@ -11,4 +11,3 @@ export interface Order {
     status: OrderStatus;
     total: number;
 }
-

@@ -24,7 +24,9 @@ function Orders() {
     const {
         data,
         isLoading,
-        isError
+        isFetching,
+        isError,
+        refetch,
     } = useGetOrdersQuery({
         search: debouncedSearch,
         ...(status ? {status: status as OrderStatus} : {}),
@@ -33,11 +35,62 @@ function Orders() {
     });
 
     if (isLoading) {
-        return <p>loading orders</p>
-    }
+    return (
+        <div>
+            <div className="hidden min-[530px]:grid grid-cols-4 gap-4 border-b bg-slate-100 p-4 font-semibold">
+                <span>Customer</span>
+                <span>Total</span>
+                <span>Status</span>
+                <span>Action</span>
+            </div>
 
-    if (isError) {
-        return <p>Failed to load orders</p>
+            {[1, 2, 3, 4, 5].map((row) => (
+                <div
+                    key={row}
+                    className="grid grid-cols-2 min-[530px]:grid-cols-4 items-center gap-4 border-b p-4 animate-pulse"
+                >
+                    <div className="space-y-2">
+                        <span className="text-xs text-slate-500 min-[530px]:hidden">
+                            Customer
+                        </span>
+                        <div className="h-4 w-24 rounded bg-slate-200" />
+                    </div>
+
+                    <div className="space-y-2">
+                        <span className="text-xs text-slate-500 min-[530px]:hidden">
+                            Total
+                        </span>
+                        <div className="h-4 w-20 rounded bg-slate-200" />
+                    </div>
+
+                    <div className="space-y-2">
+                        <span className="text-xs text-slate-500 min-[530px]:hidden">
+                            Status
+                        </span>
+                        <div className="h-4 w-16 rounded bg-slate-200" />
+                    </div>
+
+                    <div className="space-y-2">
+                        <span className="text-xs text-slate-500 min-[530px]:hidden">
+                            Action
+                        </span>
+                        <div className="h-4 w-20 rounded bg-slate-200" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+    if (isError && !data) {
+        return (
+            <div>
+                <p>Failed to load orders. Please check your connection and try again.</p>
+                <button onClick={() => refetch()}>
+                    Retry
+                </button>
+            </div>
+        )
     }
 
     return (
@@ -63,26 +116,82 @@ function Orders() {
                 onChange={(e) => setSearch(e.target.value)}
             />
 
+            {isFetching && (
+                <p className="text-sm text-slate-800" role="status">
+                    Updating orders...
+                </p>
+            )}
+
+            {isError && data && (
+                <div
+                    className="rounded-md bg-red-100 p-3 text-sm text-red-700"
+                    role="alert"
+                >
+                    Couldn't refresh orders.
+                    <button
+                        className="ml-2 underline"
+                        onClick={() => refetch()}
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
+
+            <div className="hidden min-[530px]:grid grid-cols-4 gap-4 border-b bg-slate-200 p-4 font-semibold">
+                <span>Customer</span>
+                <span>Total</span>
+                <span>Status</span>
+                <span>Action</span>
+            </div>
+
             {data && data.orders.length === 0 ? (
-                <p>No orders match your search</p>
+                debouncedSearch || status !== "" ? (
+                    <p>No orders match your search</p>
+                ) : (
+                    <p>No orders found</p>
+                )
             ) : (
                 data?.orders.map(order => {
                     return (
-                        <div key={order.id}>
-                            <h2>{order.customer}</h2>
-                            <p>{order.status}</p>
-                            <p>{order.total}</p>
-                            <Link to={`/dashboard/orders/${order.id}`}>
-                                 View order
-                            </Link>
+                        <div
+                            key={order.id}
+                            className="grid grid-cols-2 min-[530px]:grid-cols-4 items-center gap-4 border-b p-4"
+                        >
+                            <div>
+                                <span className="text-sm text-slate-800 min-[530px]:hidden">
+                                    Customer
+                                </span>
+                                <h2>{order.customer}</h2>
+                            </div>
+                            <div>
+                                <span className="text-sm text-slate-800 min-[530px]:hidden">
+                                    Total
+                                </span>
+                                <p>{order.total.toLocaleString()}</p>
+                            </div>
+                            <div>
+                                <span className="text-sm text-slate-800 min-[530px]:hidden">
+                                    Status
+                                </span>
+                                <p>{order.status}</p>
+                            </div>
+                            <div>
+                                {/* <span className="text-sm text-slate-800 min-[530px]:hidden">
+                                    Action
+                                </span> */}
+                                <Link to={`/dashboard/orders/${order.id}`}>
+                                    View order
+                                </Link>
+                            </div>
                         </div>
                     )
                 })
             )}
+
             {data && data.pagination.totalPages > 0 && (
                 <div>
                     <button
-                        disabled={page ===1}
+                        disabled={page === 1}
                         onClick={() => setPage(page - 1)}
                     >
                         Previous

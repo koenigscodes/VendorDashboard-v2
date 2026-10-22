@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import type { OrderStatus } from "../types/Order";
+import { formatCurrency } from "../utils/formatCurrency";
+import StatusBadge from "../components/StatusBadge";
 
 function Orders() {
 
@@ -44,7 +46,7 @@ function Orders() {
                 <span>Action</span>
             </div>
 
-            {[1, 2, 3, 4, 5].map((row) => (
+            {[1, 2, 3, 4, 5, 6].map((row) => (
                 <div
                     key={row}
                     className="grid grid-cols-2 min-[530px]:grid-cols-4 items-center gap-4 border-b p-4 animate-pulse"
@@ -84,11 +86,16 @@ function Orders() {
 
     if (isError && !data) {
         return (
-            <div>
-                <p>Failed to load orders. Please check your connection and try again.</p>
-                <button onClick={() => refetch()}>
-                    Retry
-                </button>
+            <div className="flex justify-center items-center text-center h-screen bg-blue-300 p-8">
+                <div>
+                    <p>Failed to load orders. Please check your connection and try again.</p>
+                    <button
+                        onClick={() => refetch()}
+                    >
+                        Retry
+                    </button>
+                </div>
+
             </div>
         )
     }
@@ -127,7 +134,7 @@ function Orders() {
                     className="rounded-md bg-red-100 p-3 text-sm text-red-700"
                     role="alert"
                 >
-                    Couldn't refresh orders.
+                    Couldn't refresh orders. Showing previously loaded orders.
                     <button
                         className="ml-2 underline"
                         onClick={() => refetch()}
@@ -167,13 +174,13 @@ function Orders() {
                                 <span className="text-sm text-slate-800 min-[530px]:hidden">
                                     Total
                                 </span>
-                                <p>{order.total.toLocaleString()}</p>
+                                <p>{formatCurrency(order.total)}</p>
                             </div>
                             <div>
-                                <span className="text-sm text-slate-800 min-[530px]:hidden">
+                                {/* <span className="text-sm text-slate-800 min-[530px]:hidden">
                                     Status
-                                </span>
-                                <p>{order.status}</p>
+                                </span> */}
+                                <StatusBadge status={order.status} />
                             </div>
                             <div>
                                 {/* <span className="text-sm text-slate-800 min-[530px]:hidden">

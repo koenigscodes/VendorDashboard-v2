@@ -1,4 +1,4 @@
-import { useGetOrdersQuery, } from "../app/api/OrdersApi";
+import { useGetOrdersQuery } from "../app/api/OrdersApi";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -12,7 +12,7 @@ function Orders() {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [status, setStatus] = useState<OrderStatus | "">("");
     const [page, setPage] = useState(1);
-    const limit = 6;
+    const limit = 10;
 
     useEffect(() => {
         const timeoutId = setTimeout(() => {
@@ -31,7 +31,7 @@ function Orders() {
         refetch,
     } = useGetOrdersQuery({
         search: debouncedSearch,
-        ...(status ? {status: status as OrderStatus} : {}),
+        ...(status ? {status} : {}),
         page,
         limit,
     });
@@ -46,7 +46,7 @@ function Orders() {
                 <span>Action</span>
             </div>
 
-            {[1, 2, 3, 4, 5, 6].map((row) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((row) => (
                 <div
                     key={row}
                     className="grid grid-cols-2 min-[530px]:grid-cols-4 items-center gap-4 border-b p-4 animate-pulse"
@@ -177,16 +177,13 @@ function Orders() {
                                 <p>{formatCurrency(order.total)}</p>
                             </div>
                             <div>
-                                {/* <span className="text-sm text-slate-800 min-[530px]:hidden">
-                                    Status
-                                </span> */}
                                 <StatusBadge status={order.status} />
                             </div>
                             <div>
-                                {/* <span className="text-sm text-slate-800 min-[530px]:hidden">
-                                    Action
-                                </span> */}
-                                <Link to={`/dashboard/orders/${order.id}`}>
+                                <Link
+                                    to={`/dashboard/orders/${order.id}`}
+                                    className=""
+                                >
                                     View order
                                 </Link>
                             </div>
@@ -196,17 +193,21 @@ function Orders() {
             )}
 
             {data && data.pagination.totalPages > 0 && (
-                <div>
+                <div className="flex flex-row justify-center gap-3 mt-2 mb-2 p-4">
                     <button
                         disabled={page === 1}
                         onClick={() => setPage(page - 1)}
+                        className="bg-gray-200 py-1 px-2 rounded-lg cursor-pointer hover:bg-gray-300"
                     >
                         Previous
                     </button>
-                    <span>Page{data.pagination.page} of {data.pagination.totalPages}</span>
+                    <span>
+                        Page {data.pagination.page} of {data.pagination.totalPages}
+                    </span>
                     <button
                         disabled={page >= data.pagination.totalPages}
                         onClick={() => setPage(page + 1)}
+                        className="bg-gray-200 py-1 px-2 rounded-lg cursor-pointer hover:bg-gray-300"
                     >
                         Next
                     </button>

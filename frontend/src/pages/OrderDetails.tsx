@@ -14,10 +14,53 @@ function OrderDetails () {
 
     const [updateError, setUpdateError] = useState("");
     const [deleteError, setDeleteError] = useState("");
+    const [isEditing, setIsEditing] = useState(false);
+    const [customer, setCustomer] = useState("");
+    const [total, setTotal] = useState("");
 
     const {
         data: order, isLoading, isError
     } = useGetOrderByIdQuery(orderId);
+
+    const handleEditClick = () => {
+        if (!order) return;
+
+        setCustomer(order.customer);
+        setTotal(String(order.total));
+        setIsEditing(true);
+    };
+
+    const handleSaveChanges = async () => {
+        if (!order) return;
+
+        setUpdateError("");
+
+        if (customer.trim().length < 3) {
+            setUpdateError("Customer name must be at least 3 characters.");
+            return;
+        }
+
+        const numericTotal = Number(total);
+
+        if (!Number.isFinite(numericTotal) || numericTotal <= 0) {
+            setUpdateError("Total must be a value greater than zero")
+            return;
+        }
+
+        try {
+            await updateOrder({
+                id: order.id,
+                customer: customer.trim(),
+                total: numericTotal,
+            }).unwrap();
+
+            setIsEditing(false);
+        } catch {
+            setUpdateError(
+                "Failed to update order. Please check your connection and try again."
+            );
+        }
+    };
 
     const [
         updateOrder, {isLoading: isUpdating}
@@ -128,6 +171,12 @@ function OrderDetails () {
                     </div>
 
                     <StatusBadge status={order.status} />
+                    <button
+                        onClick={handleEditClick}
+                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                        Edit Order
+                    </button>
                 </div>
 
                 <div className="grid grid-cols-1 gap-5 pt-5 min-[530px]:grid-cols-2">
@@ -146,6 +195,73 @@ function OrderDetails () {
                     </div>
                 </div>
             </section>
+
+            {isEditing && (
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+                    <h2 className="text-lg font-semibold text-slate-900">
+                        Edit Order
+                    </h2>
+
+                    <div className="mt-5">
+                        <label
+                            htmlFor="customer"
+                            className="mb-2 block text-sm font-medium text-slate-700"
+                        >
+                            Customer name
+                        </label>
+
+                        <input
+                            id="customer"
+                            type="text"
+                            value={customer}
+                            required
+                            onChange={(event) => setCustomer(event.target.value)}
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        />
+                    </div>
+                    <div className="mt-5">
+                        <label
+                            htmlFor="total"
+                            className="mb-2 block text-sm font-medium text-slate-700"
+                        >
+                            Order total (₦)
+                        </label>
+
+                        <input
+                            id="total"
+                            type="number"
+                            required
+                            value={total}
+                            onChange={(event) => setTotal(event.target.value)}
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        />
+                    </div>
+                    <div className="mt-5 flex flex-row gap-3">
+                        <button
+                            className="rounded-lg bg-blue-100 px-4 py-2.5 text-sm font-medium text-blue-800 transition-colors hover:bg-blue-200 disabled:cursor-not-allowed disabled:opacity-50"
+                            onClick={handleSaveChanges}
+                            disabled={isUpdating}
+                        >
+                            {isUpdating ? "Saving..." : "Save Changes"}
+                        </button>
+                        <button
+                            className="rounded-lg bg-red-100 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-200 "
+                            onClick={() => setIsEditing(false)}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </section>
+            )}
+
+            {updateError && (
+                <p
+                    role="alert"
+                    className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+                >
+                    {updateError}
+                </p>
+            )}
 
             {/* Status management */}
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
@@ -185,15 +301,6 @@ function OrderDetails () {
                 {isUpdating && (
                     <p role="status" className="mt-4 text-sm text-slate-500">
                         Updating order status...
-                    </p>
-                )}
-
-                {updateError && (
-                    <p
-                        role="alert"
-                        className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
-                    >
-                        {updateError}
                     </p>
                 )}
             </section>

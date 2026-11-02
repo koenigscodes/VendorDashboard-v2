@@ -1,16 +1,17 @@
 import type { Request, Response } from "express";
-import orders from "../data/orders.js"
+
+import { pool } from "../config/database.js";
 
 import type { Order } from "../types/order.js";
 
 import { createOrderSchema, orderStatusSchema, updateOrderSchema } from "../schemas/order.schema.js";
 
-const getOrders = (req: Request, res: Response) => {
+const getOrders = async (req: Request, res: Response) => {
     const search = req.query.search;
     const status = req.query.status;
 
     const page = Number(req.query.page ?? 1);
-    const limit = Number(req.query.limit ?? 6);
+    const limit = Number(req.query.limit ?? 10);
 
     if (
         !Number.isInteger(page) ||
@@ -23,6 +24,8 @@ const getOrders = (req: Request, res: Response) => {
             message: "Invalid pagination parameters",
         });
     }
+
+    const offset = (page - 1) * limit;
 
     if (status !== undefined) {
         const result = orderStatusSchema.safeParse(status);
@@ -38,29 +41,56 @@ const getOrders = (req: Request, res: Response) => {
         ? search.trim().toLowerCase()
         : "";
 
-    const filteredOrders = orders.filter(order =>
-         order.customer.toLowerCase().includes(searchTerm)
-    );
-
     const statusTerm = typeof status === "string"
-        ? status.trim().toLowerCase()
+        ? status.trim()
         : "";
 
-    const matchesStatus = statusTerm === ""
-        ? filteredOrders
-        : filteredOrders.filter(order =>
-            order.status === statusTerm
-        );
+    const conditions: string[] = [];
+    const values: (string | number)[] = [];
 
-    const totalOrders = matchesStatus.length;
+    if (searchTerm !== "") {
+        values.push(`%${searchTerm}%`);
+        conditions.push(`customer ILIKE $${values.length}`);
+    }
+
+    if (statusTerm !== "") {
+        values.push(statusTerm);
+        conditions.push(`status = $${values.length}`);
+    }
+
+    const whereClause = conditions.length > 0
+        ? `WHERE ${conditions.join(" AND ")}`
+        : "";
+
+    const countQuery = `
+        SELECT COUNT(*) FROM orders
+        ${whereClause}
+    `;
+
+    const countResult = await pool.query(countQuery, values);
+    const totalOrders = Number(countResult.rows[0].count);
+
+    values.push(limit);
+    const limitPlaceholder = `$${values.length}`;
+
+    values.push(offset);
+    const offsetPlaceholder = `$${values.length}`;
+
+    const query = `
+        SELECT * FROM orders
+        ${whereClause}
+        ORDER BY id
+        LIMIT ${limitPlaceholder}
+        OFFSET ${offsetPlaceholder}
+    `;
+
+    const result = await pool.query(query, values);
+    const paginatedOrders = result.rows.map(order => ({
+        ...order,
+        total: Number(order.total),
+    }));
+
     const totalPages = Math.ceil(totalOrders / limit);
-
-    const startIndex = (page - 1) * limit;
-
-    const paginatedOrders = matchesStatus.slice(
-        startIndex,
-        startIndex + limit
-    );
 
     res.json({
         orders: paginatedOrders,
@@ -73,10 +103,21 @@ const getOrders = (req: Request, res: Response) => {
     });
 };
 
-const getOrderById = (req: Request, res: Response) => {
-   const id = req.params.id;
+const getOrderById = async (req: Request, res: Response) => {
+   const orderId = Number(req.params.id);
 
-   const order = orders.find(order => order.id === Number(id));
+   if (!Number.isInteger(orderId) || orderId < 1) {
+    return res.status(400).json({
+        message: "Invalid order ID"
+    });
+   }
+
+   const result = await pool.query(
+    "SELECT * FROM orders WHERE id = $1",
+    [orderId]
+   );
+
+   const order = result.rows[0];
 
    if (!order) {
     return res.status(404).json({
@@ -84,40 +125,44 @@ const getOrderById = (req: Request, res: Response) => {
     });
    }
 
-    res.json(order);
+    res.json({
+        ...order,
+        total: Number(order.total),
+    });
 };
 
-const createOrder = (req: Request, res: Response) => {
+const createOrder = async (req: Request, res: Response) => {
     const result = createOrderSchema.safeParse(req.body);
 
     if (!result.success) {
         return res.status(400).json({message: "Invalid order"})
     }
 
-    const highestId = orders.reduce((highestId, order) => {
-        return order.id > highestId ? order.id : highestId;
-    }, 0);
+    const insertResult = await pool.query(
+        `INSERT INTO orders (customer, status, total)
+        VALUES ($1, $2, $3)
+        RETURNING *`,
+        [
+            result.data.customer,
+            "pending",
+            result.data.total,
+        ]
+    );
 
-    const newOrder: Order = {
-        id: highestId + 1,
-        customer: result.data.customer,
-        status: "pending",
-        total: result.data.total
-    };
+    const newOrder: Order = insertResult.rows[0];
 
-    orders.push(newOrder);
-
-    return res.status(201).json(newOrder);
+    return res.status(201).json({
+        ...newOrder,
+        total: Number(newOrder.total),
+    });
 };
 
-const updateOrder = (req: Request, res: Response) => {
+const updateOrder = async (req: Request, res: Response) => {
     const orderId = Number(req.params.id);
 
-    const order = orders.find(order => order.id === orderId);
-
-    if(!order) {
-        return res.status(404).json({
-            message: "order not found"
+    if (!Number.isInteger(orderId) || orderId < 1) {
+        return res.status(400).json({
+            message: "Invalid order ID"
         });
     }
 
@@ -127,34 +172,62 @@ const updateOrder = (req: Request, res: Response) => {
         return res.status(400).json({message: "Invalid order"})
     }
 
-    const orderIndex = orders.findIndex(order => order.id === orderId);
+    const updates = result.data;
+    const entries = Object.entries(updates).filter(
+        ([, value]) => value !== undefined
+    );
 
-    const updatedOrder: Order = {
-        ...order,
-        customer: result.data.customer ?? order.customer,
-        status: result.data.status ?? order.status,
-        total: result.data.total ?? order.total,
-    };
+    const setClauses = entries.map(([column], index) => {
+        return `${column} = $${index + 1}`;
+    });
 
-    orders[orderIndex] = updatedOrder;
+    const setClause = setClauses.join(", ");
 
-    return res.json(updatedOrder);
-};
+    const values = entries.map(([, value]) => value) as (string | number)[];
+    values.push(orderId);
 
-const deleteOrder = (req: Request, res: Response) => {
-    const orderId = Number(req.params.id);
+    const query = `
+        UPDATE orders
+        SET ${setClause}
+        WHERE id = $${values.length}
+        RETURNING *
+    `;
 
-    const order = orders.find(order => order.id === orderId);
+    const updateResult = await pool.query(query, values);
 
-    if (!order) {
+    const updatedOrder = updateResult.rows[0];
+
+    if (!updatedOrder) {
         return res.status(404).json({
             message: "order not found"
         });
+    };
+
+    return res.status(200).json({
+        ...updatedOrder,
+        total: Number(updatedOrder.total)
+    });
+};
+
+const deleteOrder = async (req: Request, res: Response) => {
+    const orderId = Number(req.params.id);
+
+    if (!Number.isInteger(orderId) || orderId < 1) {
+        return res.status(400).json({
+            message: "Invalid order ID",
+        });
     }
 
-    const orderIndex = orders.findIndex(order => order.id === orderId);
+    const result = await pool.query(
+        "DELETE FROM orders WHERE id = $1 RETURNING id",
+        [orderId]
+    );
 
-    orders.splice(orderIndex, 1);
+    if (result.rowCount === 0) {
+        return res.status(404).json({
+            message: "order not found",
+        });
+    }
 
     return res.status(204).send();
 };

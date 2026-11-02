@@ -17,7 +17,3 @@ export const updateOrderSchema = z.object({
     total: z.number().positive().optional(),
     status: orderStatusSchema.optional(),
 }).refine((data) => Object.keys(data).length > 0);
-
-
-//schemas answers:
-//What data are we willing to accept at runtime?
